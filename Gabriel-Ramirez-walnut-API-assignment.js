@@ -7,8 +7,41 @@ const app = express();
 const ascendingSort = (data) => {
     data.sort((a,b) => {a - b})
 }
-const descendingSort = () => {
+const descendingSort = (data) => {
     data.sort((a,b) => {b - a})
+}
+
+const applySortToData = (data) => {
+    if(sortBy && sortBy === 'id'){
+
+        if(!direction || direction === 'asc'){
+            ascendingSort(data.posts.id);
+        } else{
+            descendingSort(data.posts.id)
+        }
+    }
+    if(sortBy && sortBy === 'likes'){
+        if(!direction || direction === 'asc'){
+            ascendingSort(data.posts.likes);
+        } else{
+            descendingSort(data.posts.likes)
+        }
+    }
+    if(sortBy && sortBy === 'reads'){
+        if(!direction || direction === 'asc'){
+            ascendingSort(data.posts.reads);
+        } else{
+            descendingSort(data.posts.reads)
+        }
+    }
+    if(sortBy && sortBy === 'popularity'){
+        if(!direction || direction === 'asc'){
+            ascendingSort(data.posts.popularity);
+        } else{
+            descendingSort(data.posts.popularity)
+        }
+    }
+
 }
 
 app.get('/api/ping/:tag', async (req, res) => {
@@ -30,7 +63,8 @@ app.get('/api/ping/:tag', async (req, res) => {
     //if(!data) return res.status(404).send('Data was not found. Please try again later');
 })
 
-app.get('/api/posts/:tags/:sortBy?/:direction?', async (req, res) => {
+app.get('/api/posts/:tags/:sortBy?/:direction?', (req, res) => {
+
     //establish parameters
     let tags = req.params.tags;
     let sortBy = req.params.sortBy;
@@ -43,53 +77,23 @@ app.get('/api/posts/:tags/:sortBy?/:direction?', async (req, res) => {
     let directionFields = ['asc', 'desc'];
 
     if(!tags)return res.status(400).send('Tags parameter is required');
-    // if(sortBy && !sortByFields.includes(sortBy)) return res.status(400).send('sortBy parameter is invalid"');
-    // if(direction && !directionFields.includes(direction)) return res.status(400).send('direction parameter is invalid"');
+    if(sortBy && !sortByFields.includes(sortBy)) return res.status(400).send('sortBy parameter is invalid"');
+    if(direction && !directionFields.includes(direction)) return res.status(400).send('direction parameter is invalid"');
 
-    //call api for each tag
+    //split tags string into sepperate array elements
     if(tags.includes(',')) tags = tags.split(',');
-    console.log('tags2',tags);
+
+    //call fetch for each tag in the "tags" array and add them to a single response array called "dataArray"
+    let dataArray = [];
     tags.forEach(tag => {
         try{
-            console.log('tags3',tag);
             const response = fetch(`https://api.hatchways.io/assessment/blog/posts?tag=${tag}`, {
                 method: 'GET',
             })
             if(response.ok){
                 const data = response.json();
-
-                // if(sortBy && sortBy === 'id'){
-
-                //     if(!direction || direction === 'asc'){
-                //         ascendingSort(data.posts.id);
-                //     } else{
-                //         descendingSort(data.posts.id)
-                //     }
-                // }
-                // if(sortBy && sortBy === 'likes'){
-                //     if(!direction || direction === 'asc'){
-                //         ascendingSort(data.posts.likes);
-                //     } else{
-                //         descendingSort(data.posts.likes)
-                //     }
-                // }
-                // if(sortBy && sortBy === 'reads'){
-                //     if(!direction || direction === 'asc'){
-                //         ascendingSort(data.posts.reads);
-                //     } else{
-                //         descendingSort(data.posts.reads)
-                //     }
-                // }
-                // if(sortBy && sortBy === 'popularity'){
-                //     if(!direction || direction === 'asc'){
-                //         ascendingSort(data.posts.popularity);
-                //     } else{
-                //         descendingSort(data.posts.popularity)
-                //     }
-                // }
-
-                res.send(data);
-
+                //add data from each fetch to dataArray
+                dataArray.push(data);
             } else{
                 throw new Error(`${response.status}: ${response.statusText}`);
             }
@@ -98,9 +102,14 @@ app.get('/api/posts/:tags/:sortBy?/:direction?', async (req, res) => {
         }
     })
 
+    // Promise.all(dataArray).then(function() {
+    //    let sortedData = applySortToData(dataArray);
+    //     res.send(sortedData);
+    //   });
 
-
-    //if(!data) return res.status(404).send('Data was not found. Please try again later');
+    //sort response array and return sorted data
+    let sortedData = applySortToData(dataArray);
+    res.send(sortedData)
 })
 
 
