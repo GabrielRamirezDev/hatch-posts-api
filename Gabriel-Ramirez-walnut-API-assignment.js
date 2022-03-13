@@ -44,6 +44,29 @@ const applySortToData = (data) => {
 
 }
 
+const getAllData = async (tags) => {
+
+    let dataArray = [];
+    //fetch for each tag in the "tags" array and add them to a single response array called "dataArray"
+        tags.forEach(tag => {
+            try{
+                const response = await fetch(`https://api.hatchways.io/assessment/blog/posts?tag=${tag}`, {
+                    method: 'GET',
+                })
+                if(response.ok){
+                    const data = await response.json();
+                    //add data from each fetch to dataArray
+                    dataArray.push(data);
+                } else{
+                    throw new Error(`${response.status}: ${response.statusText}`);
+                }
+            }catch(error){
+                throw new Error(error)
+            }
+        })
+        return dataArray;
+};
+
 app.get('/api/ping/:tag', async (req, res) => {
     let tag = req.params.tag;
     if(!tag)return res.status(400).send('Tags parameter is required');
@@ -63,7 +86,7 @@ app.get('/api/ping/:tag', async (req, res) => {
     //if(!data) return res.status(404).send('Data was not found. Please try again later');
 })
 
-app.get('/api/posts/:tags/:sortBy?/:direction?', (req, res) => {
+app.get('/api/posts/:tags/:sortBy?/:direction?', async (req, res) => {
 
     //establish parameters
     let tags = req.params.tags;
@@ -80,36 +103,39 @@ app.get('/api/posts/:tags/:sortBy?/:direction?', (req, res) => {
     if(sortBy && !sortByFields.includes(sortBy)) return res.status(400).send('sortBy parameter is invalid"');
     if(direction && !directionFields.includes(direction)) return res.status(400).send('direction parameter is invalid"');
 
-    //split tags string into sepperate array elements
+    //split tags string into sepperate tags to be processed by fetch request
     if(tags.includes(',')) tags = tags.split(',');
 
-    //call fetch for each tag in the "tags" array and add them to a single response array called "dataArray"
-    let dataArray = [];
-    tags.forEach(tag => {
-        try{
-            const response = fetch(`https://api.hatchways.io/assessment/blog/posts?tag=${tag}`, {
-                method: 'GET',
-            })
-            if(response.ok){
-                const data = response.json();
-                //add data from each fetch to dataArray
-                dataArray.push(data);
-            } else{
-                throw new Error(`${response.status}: ${response.statusText}`);
-            }
-        }catch(error){
-            throw new Error(error)
-        }
-    })
+    //await data from multiple fetch calls to secondary api
+    let dataArray = await getAllData(tags);
+
+    //sort response array and return sorted data
+    let sortedData = applySortToData(dataArray);
+    res.send(sortedData)
+//----------------------------------------------------
+    // let dataArray = [];
+    // tags.forEach(tag => {
+    //     try{
+    //         const response = fetch(`https://api.hatchways.io/assessment/blog/posts?tag=${tag}`, {
+    //             method: 'GET',
+    //         })
+    //         if(response.ok){
+    //             const data = response.json();
+    //             //add data from each fetch to dataArray
+    //             dataArray.push(data);
+    //         } else{
+    //             throw new Error(`${response.status}: ${response.statusText}`);
+    //         }
+    //     }catch(error){
+    //         throw new Error(error)
+    //     }
+    // })
 
     // Promise.all(dataArray).then(function() {
     //    let sortedData = applySortToData(dataArray);
     //     res.send(sortedData);
     //   });
-
-    //sort response array and return sorted data
-    let sortedData = applySortToData(dataArray);
-    res.send(sortedData)
+//----------------------------------------------------
 })
 
 
